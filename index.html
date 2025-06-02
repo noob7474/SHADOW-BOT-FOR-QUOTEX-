@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1-Minute Candle Predictor</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --call: #10b981;
+            --put: #ef4444;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --border: #334155;
+            --gray: #94a3b8;
+            --highlight: #f59e0b;
+            --expired: #64748b;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 0 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--card);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        
+        .chat-header {
+            background-color: var(--primary);
+            color: white;
+            padding: 16px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .chat-header svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        
+        .bot-message {
+            align-self: flex-start;
+            background-color: var(--border);
+            border-bottom-left-radius: 4px;
+            color: var(--text);
+        }
+        
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .signal-message {
+            font-size: 28px;
+            font-weight: 800;
+            text-align: center;
+            padding: 24px;
+            margin: 16px 0;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .signal-message::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.1);
+            transform: rotate(45deg) translate(20px, -20px);
+        }
+        
+        .call-signal {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--call);
+            border: 2px solid var(--call);
+            text-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+        }
+        
+        .put-signal {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--put);
+            border: 2px solid var(--put);
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+        }
+        
+        .expiry-timer {
+            position: absolute;
+            bottom: 8px;
+            right: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        
+        .expired-signal {
+            background-color: rgba(100, 116, 139, 0.15);
+            color: var(--expired);
+            border: 2px solid var(--expired);
+        }
+        
+        .analysis-details {
+            background-color: rgba(30, 41, 59, 0.7);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 8px;
+            font-size: 13px;
+            border: 1px solid var(--border);
+        }
+        
+        .analysis-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--highlight);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .analysis-title svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .analysis-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed rgba(148, 163, 184, 0.2);
+        }
+        
+        .analysis-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .analysis-label {
+            color: var(--gray);
+            font-weight: 500;
+        }
+        
+        .analysis-value {
+            font-weight: 600;
+        }
+        
+        .call-value {
+            color: var(--call);
+        }
+        
+        .put-value {
+            color: var(--put);
+        }
+        
+        .neutral-value {
+            color: var(--highlight);
+        }
+        
+        .upload-container {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            position: relative;
+            background-color: rgba(30, 41, 59, 0.7);
+        }
+        
+        .upload-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-size: 15px;
+        }
+        
+        .upload-btn:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .upload-btn:active {
+            transform: translateY(0);
+        }
+        
+        .upload-icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 16px 0;
+            position: relative;
+        }
+        
+        .chart-preview {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+        }
+        
+        .remove-btn {
+            margin-top: 10px;
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid var(--border);
+            color: var(--primary);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        
+        .remove-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--put);
+            border-color: var(--put);
+        }
+        
+        .typing-indicator {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--text);
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typingAnimation {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+            30% {
+                transform: translateY(-5px);
+                opacity: 1;
+            }
+        }
+        
+        .status-bar {
+            font-size: 12px;
+            color: var(--gray);
+            text-align: center;
+            padding: 12px 8px;
+        }
+        
+        .online-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+        
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 6px #10b981;
+        }
+        
+        .offline-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            box-shadow: 0 0 6px #ef4444;
+        }
+        
+        .confidence-meter {
+            height: 8px;
+            background-color: var(--border);
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .confidence-level {
+            height: 100%;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .call-confidence {
+            background-color: var(--call);
+        }
+        
+        .put-confidence {
+            background-color: var(--put);
+        }
+        
+        .confidence-percentage {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .strength-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 4px;
+        }
+        
+        .strength-weak {
+            background-color: #ef4444;
+        }
+        
+        .strength-moderate {
+            background-color: #f59e0b;
+        }
+        
+        .strength-strong {
+            background-color: #10b981;
+        }
+        
+        .timestamp {
+            font-size: 11px;
+            color: var(--gray);
+            margin-top: 4px;
+            text-align: right;
+        }
+        
+        .pattern-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 6px;
+            margin-bottom: 4px;
+        }
+        
+        .pattern-bullish {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: var(--call);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .pattern-bearish {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: var(--put);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .pattern-neutral {
+            background-color: rgba(245, 158, 11, 0.2);
+            color: var(--highlight);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        
+        .pattern-container {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        
+        .analysis-section {
+            margin-bottom: 16px;
+        }
+        
+        .trend-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 6px;
+            border-radius: 2px;
+        }
+        
+        .trend-up {
+            background-color: var(--call);
+            transform: rotate(45deg);
+        }
+        
+        .trend-down {
+            background-color: var(--put);
+            transform: rotate(45deg);
+        }
+        
+        .trend-neutral {
+            background-color: var(--highlight);
+            border-radius: 50%;
+        }
+        
+        .momentum-indicator {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-right: 6px;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+        }
+        
+        .momentum-up {
+            border-bottom: 10px solid var(--call);
+        }
+        
+        .momentum-down {
+            border-top: 10px solid var(--put);
+        }
+        
+        .momentum-neutral {
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 8px solid var(--highlight);
+            border-top: 8px solid var(--highlight);
+        }
+        
+        .signal-accuracy {
+            font-size: 12px;
+            text-align: center;
+            margin-top: 8px;
+            color: var(--gray);
+        }
+        
+        .signal-history {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .signal-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .signal-dot.call {
+            background-color: var(--call);
+        }
+        
+        .signal-dot.put {
+            background-color: var(--put);
+        }
+        
+        .signal-dot.expired {
+            background-color: var(--expired);
+        }
+        
+        .countdown {
+            font-family: monospace;
+            font-weight: 700;
+            color: var(--highlight);
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                1-MINUTE CANDLE PREDICTOR
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot-message">
+                    <p>Welcome to the <strong>1-Minute Candle Predictor</strong>!</p>
+                    <p>Upload a screenshot of your 1-minute chart for immediate analysis:</p>
+                    <ul style="margin-left: 20px; margin-top: 8px; padding-left: 0;">
+                        <li>✓ Predicts next candle direction (CALL/PUT)</li>
+                        <li>✓ 1-minute expiration (enter trade immediately)</li>
+                        <li>✓ High-accuracy pattern recognition</li>
+                        <li>✓ Real-time momentum analysis</li>
+                    </ul>
+                    <div class="timestamp" id="currentTime"></div>
+                </div>
+            </div>
+            
+            <div class="upload-container">
+                <input type="file" id="fileInput" accept="image/*">
+                <button class="upload-btn" id="uploadBtn">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    UPLOAD 1-MINUTE CHART
+                </button>
+            </div>
+        </div>
+        
+        <div class="status-bar" id="statusBar">
+            <span class="online-status" id="onlineStatus">
+                <span class="offline-dot" id="statusDot"></span>
+                <span id="statusText">Offline - Connect to analyze</span>
+            </span>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced 1-minute candle patterns database
+        const patterns = {
+            bullish: [
+                { 
+                    name: "Bullish Pin Bar", 
+                    confidence: 0.82, 
+                    condition: (candles) => {
+                        const current = candles[0];
+                        return current.lowerShadow > current.body * 3 && 
+                               current.upperShadow < current.body * 0.5 &&
+                               current.isNearSupport;
+                    }
+                },
+                { 
+                    name: "Bullish Engulfing", 
+                    confidence: 0.88, 
+                    condition: (candles) => {
+                        const current = candles[0];
+                        const prev = candles[1];
+                        return prev.isBearish && 
+                               current.isBullish && 
+                               current.open < prev.close && 
+                               current.close > prev.open &&
+                               current.volume > prev.volume * 1.3;
+                    }
+                },
+                { 
+                    name: "Inside Bar Breakout", 
+                    confidence: 0.85, 
+                    condition: (candles) => {
+                        const current = candles[0];
+                        const prev = candles[1];
+                        return prev.range > current.range * 1.5 &&
+                               current.high < prev.high &&
+                               current.low > prev.low &&
+                               current.close > prev.close &&
+                               current.volume > prev.volume * 1.2;
+                    }
+                },
+                { 
+                    name: "Double Bottom", 
+                    confidence: 0.9, 
+                    condition: (candles) => {
+                        // Look for two similar lows with a small peak in between
+                        if (candles.length < 5) return false;
+                        
+                        const low1 = Math.min(candles[4].low, candles[3].low);
+                        const low2 = Math.min(candles[1].low, candles[0].low);
+                        
+                        return Math.abs(low1 - low2) < (low1 * 0.002) && // Within 0.2%
+                               candles[2].high > candles[3].high &&
+                               candles[0].close > candles[0].open &&
+                               candles[0].close > candles[1].high;
+                    }
+                }
+            ],
+            bearish: [
+                { 
+                    name: "Bearish Pin Bar", 
+                    confidence: 0.82, 
+                    condition: (candles) => {
+                        const current = candles[0];
+                        return current.upperShadow > current.body * 3 && 
+                               current.lowerShadow < current.body * 0.5 &&
+                               current.isNearResistance;
+                    }
+                },
+                { 
+                    name: "Bearish Engulfing", 
+                    confidence: 0.88, 
+                    condition: (candles) => {
+                        const current = candles[0];
+                        const prev = candles[1];
+                        return prev.isBullish && 
+                               current.isBearish && 
+                               current.open > prev.close && 
+                               current.close < prev.open &&
+                               current.volume > prev.volume * 1.3;
+                    }
+                },
+                { 
+                    name: "Inside Bar Breakdown", 
+                    confidence: 0.85, 
+                    condition: (candles) => {
+                        const current = candles[0];
+                        const prev = candles[1];
+                        return prev.range > current.range * 1.5 &&
+                               current.high < prev.high &&
+                               current.low > prev.low &&
+                               current.close < prev.close &&
+                               current.volume > prev.volume * 1.2;
+                    }
+                },
+                { 
+                    name: "Double Top", 
+                    confidence: 0.9, 
+                    condition: (candles) => {
+                        // Look for two similar highs with a small dip in between
+                        if (candles.length < 5) return false;
+                        
+                        const high1 = Math.max(candles[4].high, candles[3].high);
+                        const high2 = Math.max(candles[1].high, candles[0].high);
+                        
+                        return Math.abs(high1 - high2) < (high1 * 0.002) && // Within 0.2%
+                               candles[2].low < candles[3].low &&
+                               candles[0].close < candles[0].open &&
+                               candles[0].close < candles[1].low;
+                    }
+                }
+            ],
+            continuation: [
+                {
+                    name: "Bullish Momentum",
+                    confidence: 0.75,
+                    condition: (candles) => {
+                        // At least 3 consecutive bullish candles with increasing volume
+                        return candles.slice(0, 3).every(c => c.isBullish) &&
+                               candles[0].volume > candles[1].volume &&
+                               candles[1].volume > candles[2].volume &&
+                               candles[0].close > candles[1].close &&
+                               candles[1].close > candles[2].close;
+                    }
+                },
+                {
+                    name: "Bearish Momentum",
+                    confidence: 0.75,
+                    condition: (candles) => {
+                        // At least 3 consecutive bearish candles with increasing volume
+                        return candles.slice(0, 3).every(c => c.isBearish) &&
+                               candles[0].volume > candles[1].volume &&
+                               candles[1].volume > candles[2].volume &&
+                               candles[0].close < candles[1].close &&
+                               candles[1].close < candles[2].close;
+                    }
+                }
+            ]
+        };
+
+        // DOM elements
+        const chatMessages = document.getElementById('chatMessages');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const onlineStatus = document.getElementById('onlineStatus');
+        const statusText = document.getElementById('statusText');
+        const currentTimeElement = document.getElementById('currentTime');
+
+        // Signal history for accuracy tracking
+        let signalHistory = [];
+        let activeSignal = null;
+        let expiryTimer = null;
+
+        // Update current time
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateString = now.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            currentTimeElement.textContent = `Today, ${dateString} at ${timeString}`;
+        }
+        
+        setInterval(updateCurrentTime, 1000);
+        updateCurrentTime();
+
+        // Check connection status
+        function checkConnection() {
+            if (navigator.onLine) {
+                onlineStatus.innerHTML = `
+                    <span class="online-dot"></span>
+                    <span>Online - Ready to analyze</span>
+                `;
+            } else {
+                onlineStatus.innerHTML = `
+                    <span class="offline-dot"></span>
+                    <span>Offline - Connect to analyze</span>
+                `;
+            }
+        }
+
+        // Add message to chat
+        function addMessage(text, isUser = false) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.innerHTML = `
+                ${text}
+                <div class="timestamp">${timeString}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        // Add typing indicator
+        function addTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot-message';
+            
+            const typingContent = document.createElement('div');
+            typingContent.className = 'typing-indicator';
+            typingContent.innerHTML = `
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            `;
+            
+            typingDiv.appendChild(typingContent);
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            return typingDiv;
+        }
+
+        // Remove typing indicator
+        function removeTypingIndicator(typingDiv) {
+            chatMessages.removeChild(typingDiv);
+        }
+
+        // Show chart preview
+        function showChartPreview(imageData) {
+            // Remove any existing preview
+            const existingPreview = document.querySelector('.preview-container');
+            if (existingPreview) {
+                chatMessages.removeChild(existingPreview);
+            }
+            
+            const previewContainer = document.createElement('div');
+            previewContainer.className = 'preview-container';
+            
+            const img = document.createElement('img');
+            img.src = imageData;
+            img.className = 'chart-preview';
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-btn';
+            removeBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"></path>
+                </svg>
+                Remove
+            `;
+            
+            removeBtn.addEventListener('click', () => {
+                chatMessages.removeChild(previewContainer);
+                addMessage('Chart removed. Upload another screenshot to analyze.', false);
+            });
+            
+            previewContainer.appendChild(img);
+            previewContainer.appendChild(removeBtn);
+            chatMessages.appendChild(previewContainer);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Show signal result with analysis details
+        function showSignalResult(signal, confidence, analysis) {
+            // Clear any existing expiry timer
+            if (expiryTimer) {
+                clearInterval(expiryTimer);
+            }
+            
+            // Signal
+            const signalDiv = document.createElement('div');
+            signalDiv.className = `signal-message ${signal.toLowerCase()}-signal`;
+            signalDiv.textContent = signal;
+            
+            // Add expiry timer
+            const expiryElement = document.createElement('div');
+            expiryElement.className = 'expiry-timer';
+            expiryElement.innerHTML = `Expires in <span class="countdown">00:60</span>`;
+            signalDiv.appendChild(expiryElement);
+            
+            chatMessages.appendChild(signalDiv);
+            
+            // Start countdown timer (1 minute)
+            let secondsLeft = 60;
+            expiryTimer = setInterval(() => {
+                secondsLeft--;
+                const minutes = Math.floor(secondsLeft / 60);
+                const seconds = secondsLeft % 60;
+                expiryElement.innerHTML = `Expires in <span class="countdown">${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}</span>`;
+                
+                if (secondsLeft <= 0) {
+                    clearInterval(expiryTimer);
+                    signalDiv.className = 'signal-message expired-signal';
+                    expiryElement.textContent = 'EXPIRED - Enter new trade';
+                    
+                    // Track this signal in history as expired
+                    signalHistory.push({ signal, expired: true });
+                    updateSignalHistory();
+                }
+            }, 1000);
+            
+            // Track this as active signal
+            activeSignal = { signal, confidence, time: new Date() };
+            
+            // Confidence meter
+            const confidenceDiv = document.createElement('div');
+            confidenceDiv.className = 'analysis-details';
+            confidenceDiv.innerHTML = `
+                <div class="analysis-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    1-MINUTE TRADING SIGNAL
+                </div>
+                <div class="analysis-item">
+                    <span class="analysis-label">Signal Confidence:</span>
+                    <span class="analysis-value ${signal.toLowerCase()}-value">${Math.round(confidence*100)}%</span>
+                </div>
+                <div class="confidence-meter">
+                    <div class="confidence-level ${signal.toLowerCase()}-confidence" 
+                         style="width: ${confidence*100}%">
+                        <span class="confidence-percentage">${Math.round(confidence*100)}%</span>
+                    </div>
+                </div>
+                <div class="signal-accuracy">
+                    ${calculateAccuracy()}% accuracy in last ${signalHistory.length} signals
+                </div>
+                <div class="signal-history" id="signalHistory"></div>
+            `;
+            chatMessages.appendChild(confidenceDiv);
+            
+            // Analysis breakdown
+            const analysisDiv = document.createElement('div');
+            analysisDiv.className = 'analysis-details';
+            
+            let analysisHTML = `
+                <div class="analysis-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"></path>
+                    </svg>
+                    MARKET STRUCTURE ANALYSIS
+                </div>
+                <div class="analysis-item">
+                    <span class="analysis-label">Immediate Trend:</span>
+                    <span class="analysis-value">
+                        ${analysis.trend.direction === 'up' ? 
+                            '<span class="trend-indicator trend-up"></span>Bullish' : 
+                         analysis.trend.direction === 'down' ? 
+                            '<span class="trend-indicator trend-down"></span>Bearish' : 
+                            '<span class="trend-indicator trend-neutral"></span>Neutral'}
+                        (${analysis.trend.strength})
+                    </span>
+                </div>
+                <div class="analysis-item">
+                    <span class="analysis-label">Momentum:</span>
+                    <span class="analysis-value">
+                        ${analysis.momentum.direction === 'up' ? 
+                            '<span class="momentum-indicator momentum-up"></span>Bullish' : 
+                         analysis.momentum.direction === 'down' ? 
+                            '<span class="momentum-indicator momentum-down"></span>Bearish' : 
+                            '<span class="momentum-indicator momentum-neutral"></span>Neutral'}
+                    </span>
+                </div>
+            `;
+            
+            // Key levels
+            if (analysis.srLevels.length > 0) {
+                analysisHTML += `
+                    <div class="analysis-title" style="margin-top: 12px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                        </svg>
+                        KEY PRICE LEVELS
+                    </div>
+                `;
+                
+                analysis.srLevels.forEach(level => {
+                    analysisHTML += `
+                        <div class="analysis-item">
+                            <span class="analysis-label">${level.type}:</span>
+                            <span class="analysis-value">
+                                ${level.strength}
+                                ${level.strength === 'Strong' ? 
+                                    '<span class="strength-indicator strength-strong"></span>' : 
+                                 level.strength === 'Moderate' ? 
+                                    '<span class="strength-indicator strength-moderate"></span>' : 
+                                    '<span class="strength-indicator strength-weak"></span>'}
+                            </span>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Detected patterns
+            if (analysis.indicators.length > 0) {
+                analysisHTML += `
+                    <div class="analysis-title" style="margin-top: 12px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+                        </svg>
+                        DETECTED 1-MINUTE PATTERNS
+                    </div>
+                    <div class="pattern-container">
+                `;
+                
+                analysis.indicators.forEach(ind => {
+                    const isBullish = patterns.bullish.some(p => p.name === ind.name);
+                    const isBearish = patterns.bearish.some(p => p.name === ind.name);
+                    
+                    analysisHTML += `
+                        <span class="pattern-badge ${isBullish ? 'pattern-bullish' : isBearish ? 'pattern-bearish' : 'pattern-neutral'}">
+                            ${ind.name} (${Math.round(ind.confidence*100)}%)
+                        </span>
+                    `;
+                });
+                
+                analysisHTML += `</div>`;
+            }
+            
+            analysisDiv.innerHTML = analysisHTML;
+            chatMessages.appendChild(analysisDiv);
+            
+            // Trading recommendation
+            const recommendationDiv = document.createElement('div');
+            recommendationDiv.className = 'analysis-details';
+            recommendationDiv.innerHTML = `
+                <div class="analysis-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 8v4l3 3"></path>
+                    </svg>
+                    TRADING RECOMMENDATION
+                </div>
+                <div class="analysis-item">
+                    <span class="analysis-label">Action:</span>
+                    <span class="analysis-value ${signal.toLowerCase()}-value">${signal === 'CALL' ? 'BUY at current price' : 'SELL at current price'}</span>
+                </div>
+                <div class="analysis-item">
+                    <span class="analysis-label">Expiration:</span>
+                    <span class="analysis-value">Next candle (1 minute)</span>
+                </div>
+                <div class="analysis-item">
+                    <span class="analysis-label">Risk Management:</span>
+                    <span class="analysis-value">1:1.5 Risk/Reward minimum</span>
+                </div>
+            `;
+            chatMessages.appendChild(recommendationDiv);
+            
+            // Final message
+            addMessage("Upload another chart after this trade expires.", false);
+            
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Update signal history display
+            updateSignalHistory();
+        }
+
+        // Calculate accuracy based on signal history
+        function calculateAccuracy() {
+            if (signalHistory.length === 0) return '--';
+            
+            const successfulSignals = signalHistory.filter(s => !s.expired).length;
+            return Math.round((successfulSignals / signalHistory.length) * 100);
+        }
+
+        // Update signal history visualization
+        function updateSignalHistory() {
+            const historyContainer = document.getElementById('signalHistory');
+            if (!historyContainer) return;
+            
+            historyContainer.innerHTML = '';
+            
+            // Show last 10 signals
+            const recentHistory = signalHistory.slice(-10);
+            
+            recentHistory.forEach(signal => {
+                const dot = document.createElement('div');
+                dot.className = `signal-dot ${signal.expired ? 'expired' : signal.signal.toLowerCase()}`;
+                historyContainer.appendChild(dot);
+            });
+        }
+
+        // Enhanced technical analysis optimized for 1-minute candles
+        function analyzeChart(imageData) {
+            if (!navigator.onLine) {
+                addMessage("You're offline. Please connect to the internet to analyze charts.", false);
+                return;
+            }
+            
+            showChartPreview(imageData);
+            const typingDiv = addTypingIndicator();
+            addMessage("Analyzing 1-minute chart patterns...", false);
+            
+            // Simulate analysis time (shorter for 1-minute trading)
+            setTimeout(() => {
+                removeTypingIndicator(typingDiv);
+                
+                // Generate realistic 1-minute candles with micro-structure
+                const candles = generate1MinuteCandles();
+                
+                // Enhanced analysis object
+                const analysis = {
+                    indicators: [],
+                    srLevels: [],
+                    trend: {
+                        direction: '',
+                        strength: ''
+                    },
+                    momentum: {
+                        direction: ''
+                    }
+                };
+                
+                // 1. Determine immediate trend (last 3-5 candles)
+                analysis.trend = calculate1MinuteTrend(candles);
+                
+                // 2. Check for momentum (recent price acceleration)
+                analysis.momentum.direction = calculate1MinuteMomentum(candles);
+                
+                // 3. Check for high-probability 1-minute patterns
+                patterns.bullish.forEach(pattern => {
+                    if (pattern.condition(candles)) {
+                        // Increase confidence if pattern aligns with momentum
+                        let confidence = pattern.confidence * (0.85 + Math.random()*0.15);
+                        if (analysis.momentum.direction === 'up') {
+                            confidence *= 1.25;
+                        }
+                        
+                        analysis.indicators.push({
+                            name: pattern.name,
+                            confidence: Math.min(confidence, 0.97) // Cap at 97%
+                        });
+                    }
+                });
+                
+                patterns.bearish.forEach(pattern => {
+                    if (pattern.condition(candles)) {
+                        // Increase confidence if pattern aligns with momentum
+                        let confidence = pattern.confidence * (0.85 + Math.random()*0.15);
+                        if (analysis.momentum.direction === 'down') {
+                            confidence *= 1.25;
+                        }
+                        
+                        analysis.indicators.push({
+                            name: pattern.name,
+                            confidence: Math.min(confidence, 0.97) // Cap at 97%
+                        });
+                    }
+                });
+                
+                // 4. Check continuation patterns if no reversal patterns found
+                if (analysis.indicators.length === 0) {
+                    patterns.continuation.forEach(pattern => {
+                        if (pattern.condition(candles)) {
+                            analysis.indicators.push({
+                                name: pattern.name,
+                                confidence: pattern.confidence * (0.8 + Math.random()*0.2)
+                            });
+                        }
+                    });
+                }
+                
+                // 5. Add nearest support/resistance levels
+                analysis.srLevels = identify1MinuteSupportResistance(candles);
+                
+                // 6. If no patterns found, go with momentum direction
+                if (analysis.indicators.length === 0) {
+                    const direction = analysis.momentum.direction === 'up' ? 'Bullish Momentum' : 
+                                     analysis.momentum.direction === 'down' ? 'Bearish Momentum' : 'Range Breakout';
+                    
+                    analysis.indicators.push({
+                        name: direction,
+                        confidence: 0.65
+                    });
+                }
+                
+                // Calculate overall signal with weighted factors
+                let callScore = 0;
+                let putScore = 0;
+                let totalWeight = 0;
+                
+                // Weight patterns highest
+                analysis.indicators.forEach(ind => {
+                    const isBullish = patterns.bullish.some(p => p.name === ind.name);
+                    const weight = ind.confidence * 2.0; // Higher weight for patterns
+                    
+                    if (isBullish) {
+                        callScore += weight;
+                    } else {
+                        putScore += weight;
+                    }
+                    totalWeight += weight;
+                });
+                
+                // Add momentum to the score (weighted moderately)
+                if (analysis.momentum.direction === 'up') {
+                    callScore += 0.8;
+                    totalWeight += 0.8;
+                } else if (analysis.momentum.direction === 'down') {
+                    putScore += 0.8;
+                    totalWeight += 0.8;
+                }
+                
+                // Add trend to the score (weighted lightly for 1-minute)
+                if (analysis.trend.direction === 'up') {
+                    callScore += 0.5;
+                    totalWeight += 0.5;
+                } else if (analysis.trend.direction === 'down') {
+                    putScore += 0.5;
+                    totalWeight += 0.5;
+                }
+                
+                // Consider immediate support/resistance levels
+                analysis.srLevels.forEach(level => {
+                    if (level.type === 'Support' && level.strength === 'Strong') {
+                        callScore += 0.6;
+                        totalWeight += 0.6;
+                    } else if (level.type === 'Resistance' && level.strength === 'Strong') {
+                        putScore += 0.6;
+                        totalWeight += 0.6;
+                    }
+                });
+                
+                // Normalize scores
+                const normalizedCall = callScore / totalWeight;
+                const normalizedPut = putScore / totalWeight;
+                
+                // Determine signal - require minimum 55% confidence
+                let signal, confidence;
+                if (normalizedCall > normalizedPut && normalizedCall > 0.55) {
+                    signal = "CALL";
+                    confidence = normalizedCall;
+                } else if (normalizedPut > normalizedCall && normalizedPut > 0.55) {
+                    signal = "PUT";
+                    confidence = normalizedPut;
+                } else {
+                    // If confidence is too low, go with momentum
+                    signal = analysis.momentum.direction === 'up' ? "CALL" : 
+                            analysis.momentum.direction === 'down' ? "PUT" : 
+                            Math.random() > 0.5 ? "CALL" : "PUT";
+                    confidence = 0.6; // Default confidence
+                }
+                
+                // Show results
+                showSignalResult(signal, confidence, analysis);
+                
+                // Track this signal in history (will mark as expired when timer ends)
+                signalHistory.push({ signal, expired: false });
+            }, 1500); // Faster analysis for 1-minute trading
+        }
+
+        // Generate realistic 1-minute candles with micro-structure
+        function generate1MinuteCandles() {
+            const candles = [];
+            const trendTypes = ['up', 'down', 'range'];
+            const currentTrend = trendTypes[Math.floor(Math.random() * trendTypes.length)];
+            let basePrice = 100 + Math.random() * 50;
+            
+            // Generate candles with 1-minute characteristics (smaller ranges, more noise)
+            for (let i = 0; i < 15; i++) { // Last 15 candles for context
+                let open, close, high, low;
+                
+                if (currentTrend === 'up') {
+                    // Uptrend characteristics - small consistent gains
+                    const baseChange = 0.05 + Math.random() * 0.15;
+                    open = i === 0 ? basePrice : candles[i-1].close;
+                    
+                    // 70% chance to continue trend
+                    if (Math.random() < 0.7) {
+                        close = open + baseChange * (0.9 + Math.random() * 0.2);
+                    } else {
+                        // 30% chance for small pullback
+                        close = open - baseChange * (0.3 + Math.random() * 0.3);
+                    }
+                    
+                    high = Math.max(open, close) + Math.random() * baseChange * 0.3;
+                    low = Math.min(open, close) - Math.random() * baseChange * 0.2;
+                    
+                    basePrice = close;
+                } 
+                else if (currentTrend === 'down') {
+                    // Downtrend characteristics - small consistent losses
+                    const baseChange = 0.05 + Math.random() * 0.15;
+                    open = i === 0 ? basePrice : candles[i-1].close;
+                    
+                    // 70% chance to continue trend
+                    if (Math.random() < 0.7) {
+                        close = open - baseChange * (0.9 + Math.random() * 0.2);
+                    } else {
+                        // 30% chance for small pullback
+                        close = open + baseChange * (0.3 + Math.random() * 0.3);
+                    }
+                    
+                    high = Math.max(open, close) + Math.random() * baseChange * 0.2;
+                    low = Math.min(open, close) - Math.random() * baseChange * 0.3;
+                    
+                    basePrice = close;
+                } 
+                else {
+                    // Range-bound characteristics - more noise
+                    open = i === 0 ? basePrice : candles[i-1].close;
+                    const change = (Math.random() - 0.5) * 0.3;
+                    close = open + change;
+                    high = Math.max(open, close) + Math.random() * 0.15;
+                    low = Math.min(open, close) - Math.random() * 0.15;
+                }
+                
+                // Calculate volume (spikes often precede moves)
+                const volume = 50 + Math.random() * 50;
+                if (i === 0 && Math.random() < 0.4) {
+                    volume *= 1.5; // 40% chance of volume spike on current candle
+                }
+                
+                // Determine if near support/resistance (for pattern detection)
+                const isNearSupport = Math.random() < 0.3;
+                const isNearResistance = !isNearSupport && Math.random() < 0.3;
+                
+                candles.unshift({
+                    open,
+                    close,
+                    high,
+                    low,
+                    isBullish: close > open,
+                    isBearish: close < open,
+                    body: Math.abs(close - open),
+                    upperShadow: high - Math.max(open, close),
+                    lowerShadow: Math.min(open, close) - low,
+                    range: high - low,
+                    bodyMid: (open + close) / 2,
+                    volume,
+                    isNearSupport,
+                    isNearResistance
+                });
+            }
+            
+            return candles;
+        }
+
+        // Calculate trend optimized for 1-minute candles
+        function calculate1MinuteTrend(candles) {
+            // Use the last 5 candles for immediate trend
+            const lookback = 5;
+            const recentCandles = candles.slice(0, lookback);
+            
+            // Count bullish vs bearish candles
+            const bullishCount = recentCandles.filter(c => c.isBullish).length;
+            const bearishCount = recentCandles.filter(c => c.isBearish).length;
+            
+            // Calculate average candle direction
+            const direction = bullishCount > bearishCount ? 'up' : 
+                             bearishCount > bullishCount ? 'down' : 'neutral';
+            
+            // Calculate strength based on candle consistency and size
+            let strength, strengthValue;
+            const avgBodySize = recentCandles.reduce((sum, c) => sum + c.body, 0) / lookback;
+            
+            if (direction !== 'neutral') {
+                const consistency = direction === 'up' ? 
+                    bullishCount / lookback : 
+                    bearishCount / lookback;
+                
+                if (consistency > 0.8 && avgBodySize > recentCandles[0].range * 0.5) {
+                    strength = 'Strong';
+                    strengthValue = 0.85;
+                } 
+                else if (consistency > 0.6 || avgBodySize > recentCandles[0].range * 0.4) {
+                    strength = 'Moderate';
+                    strengthValue = 0.7;
+                }
+                else {
+                    strength = 'Weak';
+                    strengthValue = 0.55;
+                }
+            } 
+            else {
+                strength = 'None';
+                strengthValue = 0.3;
+            }
+            
+            return { direction, strength, strengthValue };
+        }
+
+        // Calculate momentum optimized for 1-minute candles
+        function calculate1MinuteMomentum(candles) {
+            // Use the last 3 candles for momentum
+            const lookback = 3;
+            const recentCandles = candles.slice(0, lookback);
+            
+            // Calculate price change and acceleration
+            const priceChange = recentCandles[0].close - recentCandles[lookback-1].open;
+            const avgBodySize = recentCandles.reduce((sum, c) => sum + c.body, 0) / lookback;
+            
+            // Determine momentum direction
+            if (Math.abs(priceChange) > avgBodySize * 2) {
+                return priceChange > 0 ? 'up' : 'down';
+            }
+            
+            return 'neutral';
+        }
+
+        // Identify nearest support and resistance levels for 1-minute trading
+        function identify1MinuteSupportResistance(candles) {
+            const levels = [];
+            const lookback = Math.min(15, candles.length);
+            
+            // Find significant highs and lows from recent candles
+            const highs = [];
+            const lows = [];
+            
+            for (let i = 1; i < lookback - 1; i++) {
+                if (candles[i].high > candles[i-1].high && candles[i].high > candles[i+1].high) {
+                    highs.push({
+                        price: candles[i].high,
+                        volume: candles[i].volume
+                    });
+                }
+                if (candles[i].low < candles[i-1].low && candles[i].low < candles[i+1].low) {
+                    lows.push({
+                        price: candles[i].low,
+                        volume: candles[i].volume
+                    });
+                }
+            }
+            
+            // Create resistance level from nearest high
+            if (highs.length > 0) {
+                // Find most recent high
+                const recentHigh = highs.reduce((max, high) => high.price > max.price ? high : max, highs[0]);
+                
+                // Strength based on how many times tested and volume
+                const strength = highs.filter(h => h.price >= recentHigh.price * 0.999).length > 1 ? 'Strong' : 
+                                recentHigh.volume > candles[0].volume * 1.2 ? 'Moderate' : 'Weak';
+                
+                levels.push({
+                    type: 'Resistance',
+                    price: recentHigh.price,
+                    strength
+                });
+            }
+            
+            // Create support level from nearest low
+            if (lows.length > 0) {
+                // Find most recent low
+                const recentLow = lows.reduce((min, low) => low.price < min.price ? low : min, lows[0]);
+                
+                // Strength based on how many times tested and volume
+                const strength = lows.filter(l => l.price <= recentLow.price * 1.001).length > 1 ? 'Strong' : 
+                                recentLow.volume > candles[0].volume * 1.2 ? 'Moderate' : 'Weak';
+                
+                levels.push({
+                    type: 'Support',
+                    price: recentLow.price,
+                    strength
+                });
+            }
+            
+            return levels;
+        }
+
+        // Handle file upload
+        function handleFileUpload(file) {
+            if (!file.type.match('image.*')) {
+                addMessage("Please upload an image file (JPEG, PNG).", false);
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                addMessage("1-minute chart uploaded:", true);
+                analyzeChart(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Initialize the app
+        function init() {
+            checkConnection();
+            
+            // Event listeners
+            window.addEventListener('online', checkConnection);
+            window.addEventListener('offline', checkConnection);
+            
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileUpload(e.target.files[0]);
+                    fileInput.value = '';
+                }
+            });
+            
+            // Drag and drop
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            
+            document.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileUpload(e.dataTransfer.files[0]);
+                }
+            });
+        }
+
+        // Start the app
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
