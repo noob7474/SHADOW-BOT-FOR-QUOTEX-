@@ -70,11 +70,10 @@
   </div>
 
   <div class="login-box" id="authBox">
-    <h2>Login / Register</h2>
+    <h2>Login</h2>
     <input type="email" id="email" placeholder="Email" required />
     <input type="password" id="password" placeholder="Password" required />
     <button onclick="login()">Login</button>
-    <button onclick="register()">Register</button>
   </div>
 
   <button class="logout-btn" id="logoutBtn" onclick="logout()">Logout</button>
@@ -118,13 +117,6 @@
       const pass = document.getElementById("password").value;
       auth.signInWithEmailAndPassword(email, pass)
         .catch(err => alert("Login failed: " + err.message));
-    }
-
-    function register() {
-      const email = document.getElementById("email").value;
-      const pass = document.getElementById("password").value;
-      auth.createUserWithEmailAndPassword(email, pass)
-        .catch(err => alert("Registration failed: " + err.message));
     }
 
     function logout() {
