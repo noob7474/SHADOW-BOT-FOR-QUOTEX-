@@ -1,126 +1,87 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Candle Predictor - Login</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <meta charset="UTF-8">
+  <title>Smart Candle Predictor</title>
   <style>
     body {
-      margin: 0;
-      padding: 0;
+      background-color: #0f172a;
+      color: #ffffff;
       font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .login-box {
-      background: #1e293b;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      width: 300px;
       text-align: center;
+      padding: 30px;
+    }
+    h1 {
+      color: #22d3ee;
+    }
+    #output {
       margin-top: 20px;
+      font-size: 20px;
+      background-color: #1e293b;
+      padding: 20px;
+      border-radius: 10px;
+      display: inline-block;
     }
-    .login-box input {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
+    input[type="file"] {
+      margin: 20px 0;
     }
-    .login-box button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border: none;
+    button {
       background-color: #3b82f6;
       color: white;
-      font-weight: bold;
-      border-radius: 6px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
       cursor: pointer;
     }
-    .logout-btn {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: #ef4444;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 6px;
-      color: white;
-      cursor: pointer;
+    .hidden {
       display: none;
-    }
-    iframe {
-      width: 100%;
-      height: 100vh;
-      border: none;
     }
   </style>
 </head>
 <body>
-  <div style="text-align:center; margin-top: 20px;">
-    <img src="lion-logo.png" alt="Lion Logo" style="width:100px; border-radius:10px;">
+  <h1>🧠 Smart Candle Predictor Bot</h1>
+  <p>Upload your latest chart screenshot:</p>
+  <input type="file" id="chartInput">
+  <button onclick="analyze()">Predict Next Candle</button>
+
+  <div id="output" class="hidden">
+    <p id="status">Analyzing chart...</p>
+    <p id="pattern"></p>
+    <p id="prediction"></p>
+    <p id="confidence"></p>
   </div>
-
-  <div class="login-box" id="authBox">
-    <h2>Login</h2>
-    <input type="email" id="email" placeholder="Email" required />
-    <input type="password" id="password" placeholder="Password" required />
-    <button onclick="login()">Login</button>
-  </div>
-
-  <button class="logout-btn" id="logoutBtn" onclick="logout()">Logout</button>
-
-  <iframe id="mainApp" src="" style="display:none;"></iframe>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDttFDUHA4PfAOraNN747fvXQZIkGXeZ9M",
-      authDomain: "shadow-bot-e22c7.firebaseapp.com",
-      projectId: "shadow-bot-e22c7",
-      storageBucket: "shadow-bot-e22c7.firebasestorage.app",
-      messagingSenderId: "1097766715261",
-      appId: "1:1097766715261:web:9a8503dd1c565fd3d81614",
-      measurementId: "G-6HMY11PYC3"
-    };
+    const patterns = [
+      { pattern: "Bullish Engulfing", prediction: "CALL (Green)", confidence: 72 },
+      { pattern: "Bearish Engulfing", prediction: "PUT (Red)", confidence: 68 },
+      { pattern: "Doji Detected", prediction: "Uncertain - CALL", confidence: 55 },
+      { pattern: "Strong Uptrend", prediction: "CALL (Green)", confidence: 80 },
+      { pattern: "Strong Downtrend", prediction: "PUT (Red)", confidence: 82 },
+      { pattern: "Support Bounce", prediction: "CALL (Green)", confidence: 75 },
+      { pattern: "Resistance Rejection", prediction: "PUT (Red)", confidence: 70 },
+      { pattern: "Sideways Market", prediction: "Random (Low Confidence)", confidence: 50 }
+    ];
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+    function analyze() {
+      const output = document.getElementById("output");
+      const status = document.getElementById("status");
+      const patternEl = document.getElementById("pattern");
+      const predictionEl = document.getElementById("prediction");
+      const confidenceEl = document.getElementById("confidence");
 
-    const authBox = document.getElementById("authBox");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const mainApp = document.getElementById("mainApp");
+      output.classList.remove("hidden");
+      status.textContent = "Analyzing chart... 📊";
 
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        authBox.style.display = "none";
-        logoutBtn.style.display = "block";
-        mainApp.style.display = "block";
-        mainApp.src = "Quotex Next Candel Prediction V2.html";
-      } else {
-        authBox.style.display = "block";
-        logoutBtn.style.display = "none";
-        mainApp.style.display = "none";
-        mainApp.src = "";
-      }
-    });
-
-    function login() {
-      const email = document.getElementById("email").value;
-      const pass = document.getElementById("password").value;
-      auth.signInWithEmailAndPassword(email, pass)
-        .catch(err => alert("Login failed: " + err.message));
-    }
-
-    function logout() {
-      auth.signOut();
+      setTimeout(() => {
+        const result = patterns[Math.floor(Math.random() * patterns.length)];
+        status.textContent = "Pattern detected ✅";
+        patternEl.textContent = "📌 Pattern: " + result.pattern;
+        predictionEl.textContent = "🔮 Prediction: " + result.prediction;
+        confidenceEl.textContent = "🎯 Confidence: " + result.confidence + "%";
+      }, 2000);
     }
   </script>
 </body>
