@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Candle Predictor - Login</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .login-box {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      width: 300px;
+      text-align: center;
+    }
+    .login-box input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .login-box button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      background-color: #3b82f6;
+      color: white;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .logout-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #ef4444;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      display: none;
+    }
+    iframe {
+      width: 100%;
+      height: 100vh;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-box" id="authBox">
+    <h2>Login / Register</h2>
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+  </div>
+
+  <button class="logout-btn" id="logoutBtn" onclick="logout()">Logout</button>
+
+  <iframe id="mainApp" src="" style="display:none;"></iframe>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDttFDUHA4PfAOraNN747fvXQZIkGXeZ9M",
+      authDomain: "shadow-bot-e22c7.firebaseapp.com",
+      projectId: "shadow-bot-e22c7",
+      storageBucket: "shadow-bot-e22c7.firebasestorage.app",
+      messagingSenderId: "1097766715261",
+      appId: "1:1097766715261:web:9a8503dd1c565fd3d81614",
+      measurementId: "G-6HMY11PYC3"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    const authBox = document.getElementById("authBox");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const mainApp = document.getElementById("mainApp");
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        authBox.style.display = "none";
+        logoutBtn.style.display = "block";
+        mainApp.style.display = "block";
+        mainApp.src = "Quotex Next Candel Prediction V2.html";
+      } else {
+        authBox.style.display = "block";
+        logoutBtn.style.display = "none";
+        mainApp.style.display = "none";
+        mainApp.src = "";
+      }
+    });
+
+    function login() {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+      auth.signInWithEmailAndPassword(email, pass)
+        .catch(err => alert("Login failed: " + err.message));
+    }
+
+    function register() {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+      auth.createUserWithEmailAndPassword(email, pass)
+        .catch(err => alert("Registration failed: " + err.message));
+    }
+
+    function logout() {
+      auth.signOut();
+    }
+  </script>
+</body>
+</html>
